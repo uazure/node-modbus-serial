@@ -16,6 +16,7 @@ var TelnetPort = function(ip, options) {
     this.openFlag = false;
     this.callback = null;
     this.writeQueue = [];
+    this.closedCorrectly = false;
 
     // options
     if (typeof(options) == 'undefined') options = {};
@@ -36,7 +37,7 @@ var TelnetPort = function(ip, options) {
         }
 
         // push data to socket if there's data in the queue
-        if (self.writeQueue.length > 0) {
+        if (!self.closedCorrectly && self.writeQueue.length > 0) {
           self.writeQueue.forEach(function(data) {
             this._client.write(data);
           })
@@ -84,8 +85,13 @@ var TelnetPort = function(ip, options) {
     });
 
     this._client.on('close', function(had_error) {
-        self.openFlag = false;
-        handleCallback(had_error);
+        if (self.closedCorrectly) {
+          self.openFlag = false;
+          handleCallback(had_error);
+        } else {
+          console.log('Closed abnormally, reconnecting');
+          self._client.connect(self.port, self.ip);
+        }
     });
 
     this._client.on('error', function(had_error) {
@@ -118,6 +124,7 @@ TelnetPort.prototype._emitData = function(start, length) {
  */
 TelnetPort.prototype.open = function (callback) {
     this.callback = callback;
+    this.closedCorrectly = false;
     this._client.connect(this.port, this.ip);
 };
 
@@ -126,6 +133,7 @@ TelnetPort.prototype.open = function (callback) {
  */
 TelnetPort.prototype.close = function (callback) {
     this.callback = callback;
+    this.closedCorrectly = true;
     this._client.end();
 };
 
@@ -182,6 +190,8 @@ TelnetPort.prototype.sustainableClientWrite = function(data) {
   if (!this.openFlag || this._client.destroyed) {
     this.writeQueue.push(data);
     this._client.connect(this.port, this.ip);
+  } else {
+    this._client.write(data);
   }
 }
 
