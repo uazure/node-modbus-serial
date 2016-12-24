@@ -2,7 +2,7 @@
 var util = require('util');
 var events = require('events');
 var EventEmitter = events.EventEmitter || events;
-var SerialPort = require("serialport");
+
 
 var EXCEPTION_LENGTH = 5;
 
@@ -25,6 +25,7 @@ var RTUBufferedPort = function(path, options) {
     this._length = 0;
 
     // create the SerialPort
+    var SerialPort = require("serialport");
     this._client= new SerialPort(path, options);
 
     // register the port data event
