@@ -15,6 +15,7 @@ var TelnetPort = function(ip, options) {
     this.ip = ip;
     this.openFlag = false;
     this.callback = null;
+    this.writeQueue = [];
 
     // options
     if (typeof(options) == 'undefined') options = {};
@@ -32,6 +33,14 @@ var TelnetPort = function(ip, options) {
         if (self.callback) {
             self.callback(had_error);
             self.callback = null;
+        }
+
+        // push data to socket if there's data in the queue
+        if (self.writeQueue.length > 0) {
+          self.writeQueue.forEach(function(data) {
+            this._client.write(data);
+          })
+          self.writeQueue = [];
         }
     }
 
@@ -166,7 +175,15 @@ TelnetPort.prototype.write = function (data) {
     }
 
     // send buffer to slave
-    this._client.write(data);
+    this.sustainableClientWrite(data);
 };
+
+TelnetPort.prototype.sustainableClientWrite = function(data) {
+  if (!this.openFlag || this._client.destroyed) {
+    this.writeQueue.push(data);
+    this._client.connect(this.port, this.ip);
+  }
+}
+
 
 module.exports = TelnetPort;
